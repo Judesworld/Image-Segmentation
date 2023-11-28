@@ -47,7 +47,8 @@ def readImage(path, color_format='gray', resize_dim=(128, 128), clip_range=[-125
         image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     elif color_format.lower() != 'bgr':
         raise ValueError(f"Unsupported color format: {color_format}")
-
+    
+    print(image.shape)
     # Resize if provided
     if resize_dim:
 
@@ -281,8 +282,8 @@ if __name__ == '__main__':
     malignant_images, malignant_masks = load_data_from_folder(malignant_dir)
 
     # Check image format
-    print(benign_masks[0].dtype)
-    print(benign_images[0].dtype)
+    # print(benign_masks[0].dtype)
+    # print(benign_images[0].dtype)
     
 
     # Split BENIGN into train / test / validate
@@ -323,8 +324,8 @@ if __name__ == '__main__':
     print(benign_masks[0].dtype) # <dtype: 'float32'>
 
     # Analyze the intensities of a sample image
-    analyze_image_intensities(train_images_ben[0])
-    analyze_image_intensities(train_masks_ben[0])
+    # analyze_image_intensities(train_images_ben[0])
+    # analyze_image_intensities(train_masks_ben[0])
 
     # We now have: Benign Train/Validate/Test
     # And we also: Malignant Train/Validate/Test
