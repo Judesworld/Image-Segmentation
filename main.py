@@ -5,8 +5,11 @@
 import cv2 as cv
 import numpy as np
 import os
+import tensorflow as tf
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
+from unet import unet_model
 
 '''
 Helper Function #1 - Display image
@@ -30,7 +33,7 @@ def display_image_cv(filepath):
 '''
 Helper Function #2 - Read image in
 '''
-def readImage(path, color_format='rgb', resize_dim=None, clip_range=[-125,275]):
+def readImage(path, color_format='gray', resize_dim=(128, 128), clip_range=[-125,275]):
 
     # Read the image using OpenCV
     image = cv.imread(path)
@@ -47,7 +50,14 @@ def readImage(path, color_format='rgb', resize_dim=None, clip_range=[-125,275]):
 
     # Resize if provided
     if resize_dim:
-        image = cv.resize(image, resize_dim)
+
+        # Differentiate between masks and images
+        if color_format.lower() == 'gray':
+            interpolation = cv.INTER_NEAREST  # Recommended for masks (grayscale images)
+        else:
+            interpolation = cv.INTER_LINEAR   # Suitable for color images
+
+        image = cv.resize(image, resize_dim, interpolation=interpolation)
 
     # Apply clipping if range is provided
     if clip_range:
@@ -80,7 +90,7 @@ def convert_and_save_images(input_dir, output_dir, categories):
                 file_path = os.path.join(category_input_path, file_name)
                 
                 # Read and preprocess the image
-                image = readImage(file_path, color_format='rgb')
+                image = readImage(file_path, color_format='gray')
                 
                 # Saving the image as a numpy array
                 npy_path = os.path.join(category_output_path, file_name.replace('.png', '.npy'))
@@ -117,8 +127,23 @@ def load_data_from_folder(folder):
 
             if os.path.exists(image_path):
                 # Load the image and mask
+
+                '''
+                Here I can augment/flip/normalize the image/mask pairs (random rotation to both mask and image)
+                '''
+
                 image = np.load(image_path)
                 mask = np.load(os.path.join(folder, filename))
+
+                # Ensure the image and mask are three-dimensional
+                if len(image.shape) == 2:
+                    image = image[..., tf.newaxis]
+                if len(mask.shape) == 2:
+                    mask = mask[..., tf.newaxis]
+
+                # Normalize images and augment (rotate)
+                image, mask = normalize(image, mask)
+                image, mask = random_rotate_image_and_mask(image, mask)
 
                 # Append to respective lists
                 images.append(image)
@@ -153,6 +178,77 @@ def split_data(images, masks, train_size=0.7, val_size=0.15, test_size=0.15):
 
 
 
+'''
+Helper Function #6 - Get information about images
+'''
+def analyze_image_intensities(image):
+    """
+    Analyzes and plots the intensity information of a given image.
+    """
+    # Convert to numpy array if it's a TensorFlow tensor
+    if tf.is_tensor(image):
+        image = image.numpy()
+
+    print("Sample pixel values:\n", image[0:5, 0:5])  # Adjust indices to view different parts
+
+    print("Min intensity:", np.min(image))
+    print("Max intensity:", np.max(image))
+    print("Mean intensity:", np.mean(image))
+    print("Standard deviation:", np.std(image))
+
+    plt.hist(image.ravel(), bins=256, range=[0,256])
+    plt.title("Pixel Intensity Distribution")
+    plt.xlabel("Pixel Intensity")
+    plt.ylabel("Frequency")
+    plt.show()
+
+
+
+'''
+Helper Function #7 - Normalize image and mask
+'''
+def normalize(input_image, input_mask):
+    input_image = tf.cast(input_image, tf.float32) / 255.0
+    
+    # If masks are binary or categorical but in the 0-255 range
+    input_mask = tf.cast(input_mask, tf.float32) / 255.0  # Adjust if needed based on mask range
+
+    return input_image, input_mask
+
+
+
+'''
+Helper Function #8 - Augment images
+'''
+def random_rotate_image_and_mask(image, mask):
+    """Applies a random rotation to both the image and the mask."""
+
+    # Randomly choose a rotation angle
+    angles = [0, 90, 180, 270]
+    angle = np.random.choice(angles)
+
+    # Perform rotation
+    image = tf.image.rot90(image, k=angle // 90)
+    mask = tf.image.rot90(mask, k=angle // 90)
+
+    return image, mask
+
+
+
+'''
+Helper Function #9 - Prep
+'''
+# Convert the data to tf.data.Dataset
+def prepare_dataset(images, masks, batch_size):
+    # Convert lists to tensors
+    images = tf.convert_to_tensor(images, dtype=tf.float32)
+    masks = tf.convert_to_tensor(masks, dtype=tf.float32)
+
+    # Create a TensorFlow dataset
+    dataset = tf.data.Dataset.from_tensor_slices((images, masks))
+    dataset = dataset.batch(batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+    return dataset
+
 
 
 # Main execution
@@ -171,8 +267,10 @@ if __name__ == '__main__':
     test_image = readImage(os.path.join(root_dir, "benign/benign (2).png"))
 
     # Convert images to numpy arrays (save as .npy's) - #3 (Done)
-    # convert_and_save_images(root_dir, processed_dir, categories) 
-
+    convert_and_save_images(root_dir, processed_dir, categories)
+ 
+    # Images.shape = (128, 128, 3)
+    # Masks.shape =  (128, 128)
 
     # Load NumPy Arrays
     processed_data_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data/'
@@ -181,6 +279,10 @@ if __name__ == '__main__':
 
     benign_images, benign_masks = load_data_from_folder(benign_dir)
     malignant_images, malignant_masks = load_data_from_folder(malignant_dir)
+
+    # Check image format
+    print(benign_masks[0].dtype)
+    print(benign_images[0].dtype)
     
 
     # Split BENIGN into train / test / validate
@@ -190,14 +292,14 @@ if __name__ == '__main__':
 
     # Check the distribution
     print(f"\nBenign dataset - Total Images = {len(benign_images)}")
-    print(f"Training set: {len(train_images_ben)} images")
-    print(f"Training set: {len(train_images_ben)} masks\n")
+    print(f"Training set: {len(train_images_ben)} images") # There should be 305
+    print(f"Training set: {len(train_images_ben)} masks\n") # There should be 305
 
-    print(f"Validation set: {len(val_images_ben)} images")
-    print(f"Validation set: {len(val_images_ben)} masks\n")
+    print(f"Validation set: {len(val_images_ben)} images") # There should be 66
+    print(f"Validation set: {len(val_images_ben)} masks\n") # There should be 66
 
-    print(f"Testing set: {len(test_images_ben)} images")
-    print(f"Testing set: {len(test_images_ben)} masks")
+    print(f"Testing set: {len(test_images_ben)} images") # There should be 66
+    print(f"Testing set: {len(test_images_ben)} masks") # There should be 66
     
     # Split MALIGNANT into train / test / validate
     (train_images_mal, train_masks),\
@@ -206,14 +308,70 @@ if __name__ == '__main__':
 
     # Check the distribution
     print(f"\nMalignant dataset - Total Images = {len(malignant_images)}")
-    print(f"Training set: {len(train_images_mal)} images")
-    print(f"Training set: {len(train_images_mal)} masks\n")
+    print(f"Training set: {len(train_images_mal)} images") # There should be 147
+    print(f"Training set: {len(train_images_mal)} masks\n") # There should be 147
 
-    print(f"Validation set: {len(val_images_mal)} images")
-    print(f"Validation set: {len(val_images_mal)} masks\n")
+    print(f"Validation set: {len(val_images_mal)} images") # There should be 31
+    print(f"Validation set: {len(val_images_mal)} masks\n") # There should be 31
 
-    print(f"Testing set: {len(test_images_mal)} images")
-    print(f"Testing set: {len(test_images_mal)} masks")
+    print(f"Testing set: {len(test_images_mal)} images") # There should be 32
+    print(f"Testing set: {len(test_images_mal)} masks") # There should be 32
 
-    print(test_image[0].shape)
-   
+    print("\n")
+
+    print(benign_images[0].dtype) # <dtype: 'float32'>
+    print(benign_masks[0].dtype) # <dtype: 'float32'>
+
+    # Analyze the intensities of a sample image
+    analyze_image_intensities(train_images_ben[0])
+    analyze_image_intensities(train_masks_ben[0])
+
+    # We now have: Benign Train/Validate/Test
+    # And we also: Malignant Train/Validate/Test
+
+    # Adjust batch size as needed
+    batch_size = 32
+
+    # Prepare datasets
+    train_dataset = prepare_dataset(train_images_ben, train_masks_ben, batch_size)
+    val_dataset = prepare_dataset(val_images_ben, val_masks_ben, batch_size)
+    test_dataset = prepare_dataset(test_images_ben, test_masks_ben, batch_size)
+
+    # Compile the model
+    unet_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    # Train the model
+    history = unet_model.fit(
+        train_dataset,
+        epochs=10,  # Adjust the number of epochs as needed
+        validation_data=val_dataset)
+    
+
+    # Take a batch of images from the test dataset
+    for test_images, test_masks in test_dataset.take(1):
+        # Make predictions
+        predictions = unet_model.predict(test_images)
+
+        # Optionally, display the images, true masks, and predicted masks
+        for i in range(min(len(test_images), 5)):  # Display first 5 images
+            plt.figure(figsize=(10, 10))
+            plt.subplot(1, 3, 1)
+            plt.title("Test Image")
+            plt.imshow(test_images[i].numpy().squeeze(), cmap='gray')
+            plt.axis('off')
+
+            plt.subplot(1, 3, 2)
+            plt.title("True Mask")
+            plt.imshow(test_masks[i].numpy().squeeze(), cmap='gray')
+            plt.axis('off')
+
+            plt.subplot(1, 3, 3)
+            plt.title("Predicted Mask")
+            plt.imshow(predictions[i].squeeze(), cmap='gray')  # Adjust as needed
+            plt.axis('off')
+
+            plt.show()
+
+
+    unet_model.save('path_to_my_model')
+    

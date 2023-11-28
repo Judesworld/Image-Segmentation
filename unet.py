@@ -6,7 +6,7 @@
 About; UNet
 
 Unet is an architecture for a fully convolutional neural network that specializes in image segmentation
-also called semantic segmentation. It can predict where an object is on the picture, but also is able to 
+also called semantic segmentation. It can predict where an object is on the picture, but also isable to 
 create a mask that shows where on the image that specifc object is located
 
 - fully convolutional
@@ -32,7 +32,8 @@ which then kind of forms the mask
 
 
 import tensorflow as tf
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Input
+from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Input
+from keras import layers
 
 def conv_block(input_tensor, num_filters):
     """A convolutional block consisting of 2 convolution layers followed by a max-pooling layer"""
@@ -54,7 +55,7 @@ def decoder_block(input_tensor, concat_tensor, num_filters):
     return x
 
 def build_unet(input_shape, num_filters, num_classes):
-    inputs = Input(input_shape)
+    inputs = layers.Input(input_shape)
 
     # Encoder
     x1, p1 = encoder_block(inputs, num_filters)    # 128 -> 64
@@ -69,9 +70,9 @@ def build_unet(input_shape, num_filters, num_classes):
     x2 = decoder_block(x3, x2, num_filters * 2)    # 32 -> 64
     x1 = decoder_block(x2, x1, num_filters)        # 64 -> 128
 
-    # Output layer
+   
+    # Output layer 
     outputs = Conv2D(num_classes, (1, 1), activation='sigmoid')(x1)
-
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     return model
 
