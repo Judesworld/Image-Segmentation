@@ -48,7 +48,6 @@ def readImage(path, color_format='gray', resize_dim=(128, 128), clip_range=[-125
     elif color_format.lower() != 'bgr':
         raise ValueError(f"Unsupported color format: {color_format}")
     
-    print(image.shape)
     # Resize if provided
     if resize_dim:
 
@@ -75,6 +74,10 @@ def convert_and_save_images(input_dir, output_dir, categories):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    # Initialize variables for tracking size extremes
+    min_width, min_height = float('inf'), float('inf')
+    max_width, max_height = 0, 0
+
     for category in categories:
         category_input_path = os.path.join(input_dir, category)
         category_output_path = os.path.join(output_dir, category)
@@ -93,6 +96,11 @@ def convert_and_save_images(input_dir, output_dir, categories):
                 # Read and preprocess the image
                 image = readImage(file_path, color_format='gray')
                 
+                # Update the size extremes
+                height, width = image.shape[:2]
+                min_width, max_width = min(min_width, width), max(max_width, width)
+                min_height, max_height = min(min_height, height), max(max_height, height)
+
                 # Saving the image as a numpy array
                 npy_path = os.path.join(category_output_path, file_name.replace('.png', '.npy'))
                 np.save(npy_path, image)
@@ -101,8 +109,16 @@ def convert_and_save_images(input_dir, output_dir, categories):
                 mask_path = os.path.join(category_input_path, file_name.split('.')[0] + '_mask.png')
                 if os.path.exists(mask_path):
                     mask = readImage(mask_path, color_format='gray')
+
+                    # Update the size extremes for the mask
+                    mask_height, mask_width = mask.shape[:2]
+                    min_width, max_width = min(min_width, mask_width), max(max_width, mask_width)
+                    min_height, max_height = min(min_height, mask_height), max(max_height, mask_height)
+
                     npy_mask_path = os.path.join(category_output_path, file_name.split('.')[0] + '_mask.npy')
                     np.save(npy_mask_path, mask)
+
+    return min_width, min_height, max_width, max_height
 
 
 
@@ -251,13 +267,52 @@ def prepare_dataset(images, masks, batch_size):
     return dataset
 
 
+'''
+Helper Function #10 - Plot History
+'''
+def plot_training_history(history):
+    # Plot training & validation accuracy values
+    plt.figure(figsize=(12, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('Model Accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Val'], loc='upper left')
+
+    # Plot training & validation loss values
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Val'], loc='upper left')
+
+
+
+def display_numpy_array_as_image(np_array, cmap='gray'):
+    """
+    Displays a numpy array as an image.
+
+    :param np_array: NumPy array containing image data.
+    :param cmap: Color map to use for displaying the image. Default is 'gray'.
+                 Use 'gray' for grayscale images. For RGB images, this can be None.
+    """
+    plt.imshow(np_array, cmap=cmap)
+    plt.axis('off')  # Turn off axis numbers and labels
+    plt.show()
+
+
+
 
 # Main execution
 if __name__ == '__main__':
 
     # Project information -----------------------------
-    root_dir = './CISC471/Project/Dataset_BUSI_with_GT'
-    processed_dir = './CISC471/Project/Processed_Data'
+    root_dir = '/Users/judetear/Documents/CISC471/Project/Dataset_BUSI_with_GT'
+    processed_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data'
     categories = ['benign', 'malignant', 'normal']
     # -------------------------------------------------------------------------
 
@@ -268,13 +323,14 @@ if __name__ == '__main__':
     test_image = readImage(os.path.join(root_dir, "benign/benign (2).png"))
 
     # Convert images to numpy arrays (save as .npy's) - #3 (Done)
-    convert_and_save_images(root_dir, processed_dir, categories)
+    min_width, min_height, max_width, max_height = convert_and_save_images(root_dir, processed_dir, categories)
+    # print("Min Width: {}, Min Height: {}, Max Width: {}, Max Height: {}".format(min_width, min_height, max_width, max_height))
  
     # Images.shape = (128, 128, 3)
     # Masks.shape =  (128, 128)
 
     # Load NumPy Arrays
-    processed_data_dir = './CISC471/Project/Processed_Data/'
+    processed_data_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data/'
     benign_dir = os.path.join(processed_data_dir, "benign")
     malignant_dir = os.path.join(processed_data_dir, "malignant")
 
@@ -282,8 +338,8 @@ if __name__ == '__main__':
     malignant_images, malignant_masks = load_data_from_folder(malignant_dir)
 
     # Check image format
-    # print(benign_masks[0].dtype)
-    # print(benign_images[0].dtype)
+    print(benign_masks[0].dtype)
+    print(benign_images[0].dtype)
     
 
     # Split BENIGN into train / test / validate
@@ -334,24 +390,42 @@ if __name__ == '__main__':
     batch_size = 32
 
     # Prepare datasets
-    train_dataset = prepare_dataset(train_images_ben, train_masks_ben, batch_size)
-    val_dataset = prepare_dataset(val_images_ben, val_masks_ben, batch_size)
-    test_dataset = prepare_dataset(test_images_ben, test_masks_ben, batch_size)
+    train_dataset_ben = prepare_dataset(train_images_ben, train_masks_ben, batch_size)
+    val_dataset_ben = prepare_dataset(val_images_ben, val_masks_ben, batch_size)
+    test_dataset_ben = prepare_dataset(test_images_ben, test_masks_ben, batch_size)
+    
 
     # Compile the model
     unet_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     # Train the model
     history = unet_model.fit(
-        train_dataset,
+        train_dataset_ben,
         epochs=10,  # Adjust the number of epochs as needed
-        validation_data=val_dataset)
+        validation_data=val_dataset_ben)
     
+    # Define the directory path for the predictions
+    prediction_dir_ben = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions')
+
+    # Create the directory if it doesn't exist
+    if not os.path.exists(prediction_dir_ben):
+        os.makedirs(prediction_dir_ben)
 
     # Take a batch of images from the test dataset
-    for test_images, test_masks in test_dataset.take(1):
+    for test_images, test_masks in test_dataset_ben.take(1):
         # Make predictions
         predictions = unet_model.predict(test_images)
+
+        # Save each prediction as an image
+        for i, prediction in enumerate(predictions):
+            # Convert the prediction to a suitable format for saving
+            prediction_image = (prediction.squeeze() * 255).astype(np.uint8)
+
+            # Create a unique filename for each prediction
+            prediction_filename = f"prediction_{i + 1}.png"
+
+            # Save the prediction image
+            cv.imwrite(os.path.join(prediction_dir_ben, prediction_filename), prediction_image)
 
         # Optionally, display the images, true masks, and predicted masks
         for i in range(min(len(test_images), 5)):  # Display first 5 images
@@ -373,6 +447,8 @@ if __name__ == '__main__':
 
             plt.show()
 
+    # Save the model
+    unet_model.save('path_to_my_model_ben')
 
-    unet_model.save('path_to_my_model')
-    
+    # Plot training history
+    plot_training_history(history)

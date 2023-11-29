@@ -85,7 +85,8 @@ num_classes = 1              # Number of classes (1 for binary segmentation)
 unet_model = build_unet(input_shape, num_filters, num_classes)
 unet_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# unet_model.summary()  # Uncomment to see the model architecture
+# Uncomment to see the model architecture
+# unet_model.summary()  
 
 
 
