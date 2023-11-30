@@ -311,8 +311,8 @@ def display_numpy_array_as_image(np_array, cmap='gray'):
 if __name__ == '__main__':
 
     # Project information -----------------------------
-    root_dir = '/Users/judetear/Documents/CISC471/Project/Dataset_BUSI_with_GT'
-    processed_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data'
+    root_dir = './CISC471/Project/Dataset_BUSI_with_GT'
+    processed_dir = './CISC471/Project/Processed_Data'
     categories = ['benign', 'malignant', 'normal']
     # -------------------------------------------------------------------------
 
@@ -409,8 +409,8 @@ if __name__ == '__main__':
         validation_data=val_dataset_ben)
     
     # Define the directory path for the predictions
-    prediction_dir_ben = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Benign')
-    prediction_dir_mal = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Malignant')
+    prediction_dir_ben = os.path.join('./CISC471/Project', 'Predictions-Benign')
+    prediction_dir_mal = os.path.join('./CISC471/Project', 'Predictions-Malignant')
 
     # Create the directory if it doesn't exist
     if not os.path.exists(prediction_dir_ben):
