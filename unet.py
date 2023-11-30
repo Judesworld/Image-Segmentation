@@ -29,8 +29,6 @@ Variation of classifcation: every pixel in an image gets assigned to a class tha
 which then kind of forms the mask
 '''
 
-
-
 import tensorflow as tf
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Input
 from keras import layers

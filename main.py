@@ -359,7 +359,7 @@ if __name__ == '__main__':
     print(f"Testing set: {len(test_images_ben)} masks") # There should be 66
     
     # Split MALIGNANT into train / test / validate
-    (train_images_mal, train_masks),\
+    (train_images_mal, train_masks_mal),\
     (val_images_mal, val_masks_mal),\
     (test_images_mal, test_masks_mal) = split_data(malignant_images, malignant_masks)
 
@@ -393,6 +393,10 @@ if __name__ == '__main__':
     train_dataset_ben = prepare_dataset(train_images_ben, train_masks_ben, batch_size)
     val_dataset_ben = prepare_dataset(val_images_ben, val_masks_ben, batch_size)
     test_dataset_ben = prepare_dataset(test_images_ben, test_masks_ben, batch_size)
+
+    train_dataset_mal = prepare_dataset(train_images_mal, train_masks_mal, batch_size)
+    val_dataset_mal = prepare_dataset(val_images_mal, val_masks_mal, batch_size)
+    test_dataset_mal = prepare_dataset(test_images_mal, test_masks_mal, batch_size)
     
 
     # Compile the model
@@ -405,11 +409,16 @@ if __name__ == '__main__':
         validation_data=val_dataset_ben)
     
     # Define the directory path for the predictions
-    prediction_dir_ben = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions')
+    prediction_dir_ben = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Benign')
+    prediction_dir_mal = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Malignant')
 
     # Create the directory if it doesn't exist
     if not os.path.exists(prediction_dir_ben):
         os.makedirs(prediction_dir_ben)
+
+    # Create the directory if it doesn't exist
+    if not os.path.exists(prediction_dir_mal):
+        os.makedirs(prediction_dir_mal)
 
     # Take a batch of images from the test dataset
     for test_images, test_masks in test_dataset_ben.take(1):
@@ -431,24 +440,59 @@ if __name__ == '__main__':
         for i in range(min(len(test_images), 5)):  # Display first 5 images
             plt.figure(figsize=(10, 10))
             plt.subplot(1, 3, 1)
-            plt.title("Test Image")
+            plt.title("Test Image - Benign")
             plt.imshow(test_images[i].numpy().squeeze(), cmap='gray')
             plt.axis('off')
 
             plt.subplot(1, 3, 2)
-            plt.title("True Mask")
+            plt.title("True Mask - Benign")
             plt.imshow(test_masks[i].numpy().squeeze(), cmap='gray')
             plt.axis('off')
 
             plt.subplot(1, 3, 3)
-            plt.title("Predicted Mask")
+            plt.title("Predicted Mask - Benign")
             plt.imshow(predictions[i].squeeze(), cmap='gray')  # Adjust as needed
             plt.axis('off')
 
             plt.show()
 
-    # Save the model
-    unet_model.save('path_to_my_model_ben')
+    for test_images, test_masks in test_dataset_mal.take(1):
+    # Make predictions for malignant data
+        predictions_mal = unet_model.predict(test_images)
+
+        # Save each malignant prediction as an image
+        for i, prediction in enumerate(predictions_mal):
+            # Convert the prediction to a suitable format for saving
+            prediction_image_mal = (prediction.squeeze() * 255).astype(np.uint8)
+
+            # Create a unique filename for each prediction
+            prediction_filename_mal = f"mal_prediction_{i + 1}.png"
+
+            # Save the prediction image
+            cv.imwrite(os.path.join(prediction_dir_mal, prediction_filename_mal), prediction_image_mal)
+
+        # Optionally, display the images, true masks, and predicted masks for malignant data
+        for i in range(min(len(test_images), 5)):  # Display first 5 images
+            plt.figure(figsize=(10, 10))
+            plt.subplot(1, 3, 1)
+            plt.title("Test Image - Malignant")
+            plt.imshow(test_images[i].numpy().squeeze(), cmap='gray')
+            plt.axis('off')
+
+            plt.subplot(1, 3, 2)
+            plt.title("True Mask - Malignant")
+            plt.imshow(test_masks[i].numpy().squeeze(), cmap='gray')
+            plt.axis('off')
+
+            plt.subplot(1, 3, 3)
+            plt.title("Predicted Mask - Malignant")
+            plt.imshow(predictions_mal[i].squeeze(), cmap='gray')  # Adjust as needed
+            plt.axis('off')
+
+            plt.show()
 
     # Plot training history
     plot_training_history(history)
+
+    # Save the model
+    unet_model.save('Path-to-model')
