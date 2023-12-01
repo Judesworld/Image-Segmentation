@@ -312,8 +312,8 @@ def plot_training_history(history):
 if __name__ == '__main__':
 
     # Project information -----------------------------
-    root_dir = '/Users/judetear/Documents/CISC471/Project/Dataset_BUSI_with_GT'
-    processed_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data'
+    root_dir = './Project/Dataset_BUSI_with_GT'
+    processed_dir = './Project/Processed_Data'
     categories = ['benign', 'malignant', 'normal']
     # -------------------------------------------------------------------------
 
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     # Masks.shape =  (128, 128)
 
     # Load NumPy Arrays
-    processed_data_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data/'
+    processed_data_dir = './Project/Processed_Data/'
     benign_dir = os.path.join(processed_data_dir, "benign")
     malignant_dir = os.path.join(processed_data_dir, "malignant")
 
@@ -413,8 +413,8 @@ if __name__ == '__main__':
     plot_training_history(history)
     
     # Define the directory path for the predictions
-    prediction_dir_ben = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Benign')
-    prediction_dir_mal = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Malignant')
+    prediction_dir_ben = os.path.join('./Project', 'Predictions-Benign')
+    prediction_dir_mal = os.path.join('./Project', 'Predictions-Malignant')
 
     # Create the directory if it doesn't exist
     if not os.path.exists(prediction_dir_ben):
