@@ -34,24 +34,25 @@ from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Input
 from keras import layers
 
 def conv_block(input_tensor, num_filters):
-    """A convolutional block consisting of 2 convolution layers followed by a max-pooling layer"""
+    # A convolutional block consisting of 2 convolution layers followed by a max-pooling layer
     x = Conv2D(num_filters, (3, 3), padding="same", activation="relu")(input_tensor)
     x = Conv2D(num_filters, (3, 3), padding="same", activation="relu")(x)
     return x
 
 def encoder_block(input_tensor, num_filters):
-    """An encoder block (convolutions + max-pooling)"""
+    # An encoder block (convolutions + max-pooling)
     x = conv_block(input_tensor, num_filters)
     p = MaxPooling2D((2, 2))(x)
     return x, p
 
 def decoder_block(input_tensor, concat_tensor, num_filters):
-    """A decoder block (upsampling, concatenation, convolutions)"""
+    # A decoder block (upsampling, concatenation, convolutions)
     x = UpSampling2D((2, 2))(input_tensor)
     x = Concatenate()([x, concat_tensor])
     x = conv_block(x, num_filters)
     return x
 
+# Build the unet
 def build_unet(input_shape, num_filters, num_classes):
     inputs = layers.Input(input_shape)
 
@@ -68,7 +69,6 @@ def build_unet(input_shape, num_filters, num_classes):
     x2 = decoder_block(x3, x2, num_filters * 2)    # 32 -> 64
     x1 = decoder_block(x2, x1, num_filters)        # 64 -> 128
 
-   
     # Output layer 
     outputs = Conv2D(num_classes, (1, 1), activation='sigmoid')(x1)
     model = tf.keras.Model(inputs=inputs, outputs=outputs)

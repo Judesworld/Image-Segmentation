@@ -2,6 +2,20 @@
 # Friday November 17th 2023
 # CISC 471: Main
 
+'''
+Description:
+Its important to note the desired folder hierarchy of this project.
+
+The Dataset_BUSI_with_GT should contain the original .png files
+It should go Project > Dataset_BUSI_with_GT > [benign/malignant/normal]
+
+After preprocessing a new folder called "Processed_Data" should exist
+containing the NumPy Arrays
+It should go Project > Processed_Data > [benign/malignant/normal]
+
+==
+'''
+
 import cv2 as cv
 import numpy as np
 import os
@@ -78,10 +92,12 @@ def convert_and_save_images(input_dir, output_dir, categories):
     min_width, min_height = float('inf'), float('inf')
     max_width, max_height = 0, 0
 
+    # Iterate over the categories
     for category in categories:
         category_input_path = os.path.join(input_dir, category)
         category_output_path = os.path.join(output_dir, category)
 
+        # Ensure input and output directories exist
         if not os.path.isdir(category_input_path):
             print(f"Category input path does not exist: {category_input_path}")
             continue
@@ -89,23 +105,26 @@ def convert_and_save_images(input_dir, output_dir, categories):
         if not os.path.exists(category_output_path):
             os.makedirs(category_output_path)
 
+        # Iterate over current categories directory 
         for file_name in os.listdir(category_input_path):
+
+            # Get ultra sound image
             if file_name.endswith('.png') and not file_name.endswith('_mask.png'):
                 file_path = os.path.join(category_input_path, file_name)
                 
                 # Read and preprocess the image
                 image = readImage(file_path, color_format='gray')
                 
-                # Update the size extremes
+                # Update the size extremes 
                 height, width = image.shape[:2]
                 min_width, max_width = min(min_width, width), max(max_width, width)
                 min_height, max_height = min(min_height, height), max(max_height, height)
 
-                # Saving the image as a numpy array
+                # Save the image as NumPy array 
                 npy_path = os.path.join(category_output_path, file_name.replace('.png', '.npy'))
                 np.save(npy_path, image)
 
-                # Optionally, also process and save the corresponding mask
+                # Process and save the corresponding mask
                 mask_path = os.path.join(category_input_path, file_name.split('.')[0] + '_mask.png')
                 if os.path.exists(mask_path):
                     mask = readImage(mask_path, color_format='gray')
@@ -116,6 +135,8 @@ def convert_and_save_images(input_dir, output_dir, categories):
                     min_height, max_height = min(min_height, mask_height), max(max_height, mask_height)
 
                     npy_mask_path = os.path.join(category_output_path, file_name.split('.')[0] + '_mask.npy')
+                    
+                    # Save the mask as NumPy array
                     np.save(npy_mask_path, mask)
 
     return min_width, min_height, max_width, max_height
@@ -136,19 +157,20 @@ def load_data_from_folder(folder):
     # Sort the filenames to ensure correspondence
     sorted_filenames = sorted(os.listdir(folder))
 
+    # Iterate over the NumPy Arrays
     for filename in sorted_filenames:
+
+        # Get masks
         if filename.endswith("mask.npy"):
+
             # Find the corresponding image file
             image_filename = filename.replace("_mask.npy", ".npy")
             image_path = os.path.join(folder, image_filename)
 
+            # If the image exists
             if os.path.exists(image_path):
+
                 # Load the image and mask
-
-                '''
-                Here I can augment/flip/normalize the image/mask pairs (random rotation to both mask and image)
-                '''
-
                 image = np.load(image_path)
                 mask = np.load(os.path.join(folder, filename))
 
@@ -199,19 +221,16 @@ def split_data(images, masks, train_size=0.7, val_size=0.15, test_size=0.15):
 Helper Function #6 - Get information about images
 '''
 def analyze_image_intensities(image):
-    """
-    Analyzes and plots the intensity information of a given image.
-    """
     # Convert to numpy array if it's a TensorFlow tensor
     if tf.is_tensor(image):
         image = image.numpy()
 
-    print("Sample pixel values:\n", image[0:5, 0:5])  # Adjust indices to view different parts
+    # print("Sample pixel values:\n", image[0:5, 0:5])
 
-    print("Min intensity:", np.min(image))
-    print("Max intensity:", np.max(image))
-    print("Mean intensity:", np.mean(image))
-    print("Standard deviation:", np.std(image))
+    # print("Min intensity:", np.min(image))
+    # print("Max intensity:", np.max(image))
+    # print("Mean intensity:", np.mean(image))
+    # print("Standard deviation:", np.std(image))
 
     plt.hist(image.ravel(), bins=256, range=[0,256])
     plt.title("Pixel Intensity Distribution")
@@ -225,21 +244,19 @@ def analyze_image_intensities(image):
 Helper Function #7 - Normalize image and mask
 '''
 def normalize(input_image, input_mask):
+    # If images are binary or categorical but in the 0-255 range
     input_image = tf.cast(input_image, tf.float32) / 255.0
     
     # If masks are binary or categorical but in the 0-255 range
     input_mask = tf.cast(input_mask, tf.float32) / 255.0  # Adjust if needed based on mask range
-
     return input_image, input_mask
 
 
 
 '''
-Helper Function #8 - Augment images
+Helper Function #8 - Augment images (applies a random rotation)
 '''
 def random_rotate_image_and_mask(image, mask):
-    """Applies a random rotation to both the image and the mask."""
-
     # Randomly choose a rotation angle
     angles = [0, 90, 180, 270]
     angle = np.random.choice(angles)
@@ -247,7 +264,6 @@ def random_rotate_image_and_mask(image, mask):
     # Perform rotation
     image = tf.image.rot90(image, k=angle // 90)
     mask = tf.image.rot90(mask, k=angle // 90)
-
     return image, mask
 
 
@@ -292,27 +308,12 @@ def plot_training_history(history):
 
 
 
-def display_numpy_array_as_image(np_array, cmap='gray'):
-    """
-    Displays a numpy array as an image.
-
-    :param np_array: NumPy array containing image data.
-    :param cmap: Color map to use for displaying the image. Default is 'gray'.
-                 Use 'gray' for grayscale images. For RGB images, this can be None.
-    """
-    plt.imshow(np_array, cmap=cmap)
-    plt.axis('off')  # Turn off axis numbers and labels
-    plt.show()
-
-
-
-
 # Main execution
 if __name__ == '__main__':
 
     # Project information -----------------------------
-    root_dir = './CISC471/Project/Dataset_BUSI_with_GT'
-    processed_dir = './CISC471/Project/Processed_Data'
+    root_dir = '/Users/judetear/Documents/CISC471/Project/Dataset_BUSI_with_GT'
+    processed_dir = '/Users/judetear/Documents/CISC471/Project/Processed_Data'
     categories = ['benign', 'malignant', 'normal']
     # -------------------------------------------------------------------------
 
@@ -408,9 +409,12 @@ if __name__ == '__main__':
         epochs=10,  # Adjust the number of epochs as needed
         validation_data=val_dataset_ben)
     
+    # Plot training history
+    plot_training_history(history)
+    
     # Define the directory path for the predictions
-    prediction_dir_ben = os.path.join('./CISC471/Project', 'Predictions-Benign')
-    prediction_dir_mal = os.path.join('./CISC471/Project', 'Predictions-Malignant')
+    prediction_dir_ben = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Benign')
+    prediction_dir_mal = os.path.join('/Users/judetear/Documents/CISC471/Project', 'Predictions-Malignant')
 
     # Create the directory if it doesn't exist
     if not os.path.exists(prediction_dir_ben):
@@ -490,9 +494,6 @@ if __name__ == '__main__':
             plt.axis('off')
 
             plt.show()
-
-    # Plot training history
-    plot_training_history(history)
 
     # Save the model
     unet_model.save('Path-to-model')
