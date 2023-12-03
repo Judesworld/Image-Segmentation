@@ -1,9 +1,11 @@
 # Jude Tear
 # Friday November 17th 2023
-# CISC 471: Main
 
 '''
 Description:
+This file works with unet.py to perform image segmentation on the Ultra Sound Breast Cancer dataset, 
+and will run so long as the correct folder structure is correct and data is available. 
+
 Its important to note the desired folder hierarchy of this project.
 
 The Dataset_BUSI_with_GT should contain the original .png files
