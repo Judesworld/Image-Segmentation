@@ -9,6 +9,7 @@ and will run so long as the correct folder structure is correct and data is avai
 Its important to note the desired folder hierarchy of this project.
 
 The Dataset_BUSI_with_GT should contain the original .png files
+Dataset can be found on Kaggle
 It should go Project > Dataset_BUSI_with_GT > [benign/malignant/normal]
 
 After preprocessing a new folder called "Processed_Data" should exist
